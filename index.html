@@ -320,6 +320,40 @@
   .toast svg{width:17px;height:17px;flex-shrink:0;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 
   .hidden{display:none!important}
+
+  /* ─── ANIMACIONES ─── */
+  @keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes fabIn{from{opacity:0;transform:scale(.4) translateY(24px)}to{opacity:1;transform:none}}
+  @keyframes pip{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}70%,100%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
+  @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+  .lead{animation:cardIn .42s cubic-bezier(.2,.75,.3,1) backwards;animation-delay:calc(var(--i,0)*45ms)}
+  .lead-list.no-anim .lead{animation:none}
+  .lead:active{transform:scale(.98)}
+  .view-title{animation:fadeUp .35s ease backwards}
+  .view-sub{animation:fadeUp .35s .03s ease backwards}
+  .funnel{animation:fadeUp .42s .05s ease backwards}
+  .filters{animation:fadeUp .42s .09s ease backwards}
+  .alarm-banner{animation:fadeUp .4s ease backwards}
+  .fab{animation:fabIn .55s cubic-bezier(.2,.85,.3,1.25) .15s backwards}
+  .alarm-pip{animation:pip 1.9s ease-out infinite}
+  .stage:active{transform:scale(.975)}
+  .count-pill{animation:pop .35s cubic-bezier(.2,.8,.3,1.3) backwards}
+
+  /* ─── CARGA RÁPIDA / IMPORT ─── */
+  .sheet-hint{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+  .sheet-hint b{color:var(--accent2);font-weight:700}
+  .bulk-preview{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 16px}
+  .bulk-chip{font-size:12px;font-weight:600;padding:5px 10px;border-radius:9px;background:var(--card2);border:1px solid var(--border);color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+  .bulk-chip b{color:var(--txt);font-weight:700}
+  .bulk-chip.ok{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08);color:#86efac}
+  .bulk-chip.ok b{color:#bbf7d0}
+  .bulk-chip.bad{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.07);color:#fca5a5}
+  .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  @media (prefers-reduced-motion: reduce){
+    .lead,.fab,.view-title,.view-sub,.funnel,.filters,.alarm-banner,.alarm-pip,.count-pill{animation:none!important}
+    *{transition-duration:.001ms!important}
+  }
   .mb0{margin-bottom:0}
 </style>
 </head>
@@ -480,7 +514,7 @@ function toast(msg,ok=true){
 ═══════════════════════════════════════════════════════ */
 function countBy(st){return leads.filter(l=>l.estado===st).length;}
 
-function renderDashboard(){
+function renderDashboard(animate=true){
   const total=leads.length;
   const alarms=leads.filter(isAlarm);
   const maxC=Math.max(1,...STATE_ORDER.map(countBy));
@@ -542,8 +576,8 @@ function renderDashboard(){
   if(!list.length){
     html+=emptyHtml(total===0);
   }else{
-    html+='<div class="lead-list">';
-    list.forEach(l=>html+=leadCardHtml(l));
+    html+=`<div class="lead-list${animate?'':' no-anim'}">`;
+    list.forEach((l,i)=>html+=leadCardHtml(l,i));
     html+='</div>';
   }
 
@@ -566,7 +600,7 @@ function chipHtml(key,label,color,count){
   const act=activeFilter===key;
   return `<button class="chip ${act?'active':''}" onclick="setFilter('${key}')">${color?`<span class="dot" style="background:${color}"></span>`:''}${label} ${count}</button>`;
 }
-function leadCardHtml(l){
+function leadCardHtml(l,idx=0){
   const s=STATES[l.estado];
   const g=gradFor(l.id);
   const al=isAlarm(l);
@@ -574,7 +608,7 @@ function leadCardHtml(l){
   let prog='';
   for(let i=0;i<MAX_CONTACTS;i++)prog+=`<span class="pdot" style="${i<l.contactos?`background:${s.color}`:''}"></span>`;
   const time=timeAgo(l.lastContactAt);
-  return `<div class="lead ${al?'alarm':''}" onclick="openLeadDetail('${l.id}')">
+  return `<div class="lead ${al?'alarm':''}" style="--i:${Math.min(idx,12)}" onclick="openLeadDetail('${l.id}')">
     <div class="lead-avatar" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${initials(l.nombre)}${al?'<span class="alarm-pip"></span>':''}</div>
     <div class="lead-info">
       <div class="lead-name">${esc(l.nombre)}</div>
@@ -593,7 +627,8 @@ function leadCardHtml(l){
 function emptyHtml(noLeads){
   if(noLeads)return `<div class="empty">
     <div class="empty-ico"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
-    <h4>Todavía no hay leads</h4><p>Tocá el botón + para cargar tu primer lead y empezar a gestionar.</p></div>`;
+    <h4>Todavía no hay leads</h4><p>Cargá tu primer lead con el botón +, o pegá una lista entera de una.</p>
+    <button class="btn btn-primary" style="margin-top:16px;max-width:260px" onclick="openBulkAdd()"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Cargar varios leads</button></div>`;
   return `<div class="empty"><div class="empty-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div><h4>Sin resultados</h4><p>No hay leads en este filtro.</p></div>`;
 }
 function setFilter(f){activeFilter=f;renderDashboard();window.scrollTo({top:document.querySelector('.filters')?.offsetTop-70||0,behavior:'smooth'});}
@@ -886,8 +921,14 @@ function renderConfig(){
   }
   // gestión de datos
   html+=`<div style="margin-top:26px;padding-top:20px;border-top:1px solid var(--border)">
-    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">Datos</h3>
-    <button class="btn btn-ghost" style="margin-bottom:10px" onclick="exportData()"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Exportar datos (backup)</button>
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:4px">Datos</h3>
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">Cargá tus contactos en segundos o restaurá un backup.</p>
+    <button class="btn btn-primary" style="margin-bottom:10px" onclick="openBulkAdd()"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Cargar varios leads (pegar lista)</button>
+    <div class="data-grid">
+      <button class="btn btn-ghost" onclick="triggerImport()"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Importar</button>
+      <button class="btn btn-ghost" onclick="exportData()"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Exportar</button>
+    </div>
+    <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importBackup(this)">
     <button class="btn btn-danger" onclick="resetAll()"><svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>Borrar todos los leads</button>
   </div>`;
   document.getElementById('view-config').innerHTML=html;
@@ -912,8 +953,140 @@ function delQR(i){
   openConfirm('¿Eliminar respuesta?','',(  'Eliminar'),()=>{quickReplies.splice(i,1);save();renderConfig();toast('Eliminada');});
 }
 function exportData(){
-  const data=JSON.stringify({leads,quickReplies,exported:new Date().toISOString()},null,2);
-  copyText(data,'Backup copiado al portapapeles');
+  if(!leads.length&&!quickReplies.length){toast('No hay nada para exportar',false);return;}
+  const data=JSON.stringify({app:'leadflow',v:1,leads,quickReplies,exported:new Date().toISOString()},null,2);
+  try{
+    const blob=new Blob([data],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const d=new Date();
+    const p=n=>String(n).padStart(2,'0');
+    const a=document.createElement('a');
+    a.href=url;a.download=`leadflow-backup-${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}.json`;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast('Backup descargado ✓');
+  }catch{ copyText(data,'Backup copiado al portapapeles'); }
+}
+
+/* ─── Importar backup (.json) ─── */
+function triggerImport(){document.getElementById('import-file').click();}
+function importBackup(input){
+  const file=input.files&&input.files[0];input.value='';
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    let data;
+    try{data=JSON.parse(e.target.result);}catch{toast('El archivo no es un JSON válido',false);return;}
+    const incoming=Array.isArray(data)?data:(data.leads||[]);
+    const incomingQR=Array.isArray(data)?[]:(data.quickReplies||[]);
+    if(!Array.isArray(incoming)||!incoming.length){toast('No encontré leads en el archivo',false);return;}
+    // merge sin duplicar por id (y por nombre+tel como respaldo)
+    const seen=new Set(leads.map(l=>l.id));
+    const seenKey=new Set(leads.map(l=>(l.nombre+'|'+l.telefono).toLowerCase()));
+    let added=0;
+    incoming.forEach(raw=>{
+      if(!raw||!raw.nombre)return;
+      const key=((raw.nombre||'')+'|'+(raw.telefono||'')).toLowerCase();
+      if(raw.id&&seen.has(raw.id))return;
+      if(seenKey.has(key))return;
+      const l=normalizeLead(raw);
+      leads.unshift(l);seen.add(l.id);seenKey.add(key);added++;
+    });
+    // sumar respuestas rápidas nuevas
+    incomingQR.forEach(q=>{if(typeof q==='string'&&q.trim()&&!quickReplies.includes(q))quickReplies.push(q);});
+    save();
+    if(currentView==='dashboard')renderDashboard();else renderConfig();
+    toast(added?`${added} lead${added!==1?'s':''} importado${added!==1?'s':''} ✓`:'No había leads nuevos',added>0);
+  };
+  reader.readAsText(file);
+}
+function normalizeLead(raw){
+  const ts=now();
+  return {
+    id:raw.id||uid(),
+    nombre:String(raw.nombre).trim(),
+    telefono:String(raw.telefono||'').trim(),
+    observaciones:String(raw.observaciones||'').trim(),
+    estado:STATES[raw.estado]?raw.estado:'nueva',
+    contactos:Number.isFinite(raw.contactos)?raw.contactos:0,
+    historial:Array.isArray(raw.historial)&&raw.historial.length?raw.historial:[{ts,tipo:'creado',texto:'Lead importado'}],
+    createdAt:raw.createdAt||ts,updatedAt:raw.updatedAt||ts,lastContactAt:raw.lastContactAt||ts,
+  };
+}
+
+/* ─── Carga rápida (pegar lista) ─── */
+function openBulkAdd(){
+  closeDrawer();
+  openSheet('Cargar varios leads',`
+    <p class="sheet-hint">Pegá tu lista, <b>un lead por línea</b>. Funciona con cualquiera de estos formatos:<br>
+    <b>María González, 3515929043</b><br><b>Juan Pérez - 3804567890</b><br><b>Lucía Gómez 11 2345 6789</b></p>
+    <div class="field"><textarea id="bulk-text" rows="7" placeholder="María González, 3515929043&#10;Juan Pérez - 3804567890&#10;Lucía Gómez 11 2345 6789"></textarea></div>
+    <div class="bulk-preview" id="bulk-preview"></div>
+    <button class="btn btn-primary" id="bulk-go" onclick="commitBulk()"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Cargar leads</button>
+  `);
+  const ta=document.getElementById('bulk-text');
+  ta.addEventListener('input',updateBulkPreview);
+  updateBulkPreview();
+  setTimeout(()=>ta.focus(),300);
+}
+function parseBulkLine(line){
+  line=line.trim();
+  if(!line)return null;
+  let nombre='',tel='';
+  // separadores explícitos: coma, tab, punto y coma, barra, " - "
+  let parts=line.split(/\s*[,;\t|]\s*|\s+-\s+/).map(p=>p.trim()).filter(Boolean);
+  if(parts.length>=2){
+    const pi=parts.findIndex(p=>p.replace(/\D/g,'').length>=7);
+    if(pi>=0){tel=parts[pi];nombre=parts.filter((_,i)=>i!==pi).join(' ');}
+    else{nombre=parts[0];tel=parts.slice(1).join(' ');}
+  }else{
+    // sin separador: el teléfono es la cola numérica
+    const m=line.match(/^(.*?)[\s:]*?([+(]?\d[\d\s().+\-]{5,})$/);
+    if(m){nombre=m[1].trim();tel=m[2].trim();}
+    else{nombre=line;tel='';}
+  }
+  return {nombre:nombre.replace(/\s+/g,' ').trim(),tel:tel.trim()};
+}
+function parseBulk(text){
+  const ok=[],bad=[];
+  (text||'').split('\n').forEach(line=>{
+    const p=parseBulkLine(line);
+    if(!p)return;
+    const digits=p.tel.replace(/\D/g,'');
+    if(p.nombre&&digits.length>=7)ok.push(p);
+    else if(p.nombre||p.tel)bad.push(p);
+  });
+  return {ok,bad};
+}
+function updateBulkPreview(){
+  const ta=document.getElementById('bulk-text');if(!ta)return;
+  const {ok,bad}=parseBulk(ta.value);
+  const pv=document.getElementById('bulk-preview');
+  const go=document.getElementById('bulk-go');
+  let chips='';
+  if(ok.length)chips+=`<span class="bulk-chip ok"><b>${ok.length}</b> listo${ok.length!==1?'s':''} para cargar</span>`;
+  if(bad.length)chips+=`<span class="bulk-chip bad"><b>${bad.length}</b> sin teléfono (se omiten)</span>`;
+  if(!ok.length&&!bad.length)chips=`<span class="bulk-chip">Pegá tu lista arriba ↑</span>`;
+  pv.innerHTML=chips;
+  if(go)go.textContent='';
+  if(go){
+    go.innerHTML=`<svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>${ok.length?`Cargar ${ok.length} lead${ok.length!==1?'s':''}`:'Cargar leads'}`;
+    go.style.opacity=ok.length?'1':'.5';
+  }
+}
+function commitBulk(){
+  const ta=document.getElementById('bulk-text');if(!ta)return;
+  const {ok}=parseBulk(ta.value);
+  if(!ok.length){toast('No detecté ningún lead con teléfono',false);return;}
+  const ts=now();
+  ok.forEach(p=>{
+    leads.unshift({id:uid(),nombre:p.nombre,telefono:p.tel,observaciones:'',estado:'nueva',contactos:0,
+      historial:[{ts,tipo:'creado',texto:'Lead creado (carga rápida)'}],
+      createdAt:ts,updatedAt:ts,lastContactAt:ts});
+  });
+  save();closeSheet();
+  nav('dashboard');
+  toast(`${ok.length} lead${ok.length!==1?'s':''} cargado${ok.length!==1?'s':''} ✓`);
 }
 function resetAll(){
   openConfirm('¿Borrar TODOS los leads?','Esta acción no se puede deshacer. Las respuestas rápidas se conservan.','Borrar todo',()=>{
@@ -945,7 +1118,7 @@ function hexA(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,
 ═══════════════════════════════════════════════════════ */
 renderDashboard();
 // refresco de alarmas cada minuto
-setInterval(()=>{if(currentView==='dashboard')renderDashboard();},60000);
+setInterval(()=>{if(currentView==='dashboard')renderDashboard(false);},60000);
 </script>
 </body>
 </html>
